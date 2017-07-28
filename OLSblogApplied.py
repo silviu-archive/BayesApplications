@@ -27,7 +27,7 @@ def generateData(n=20, a=1, b=1, c=0, latent_error_y=10):
 def plotPosteriorCr(mdl, trc, rawdata, xlims, npoints=1000):
     #Plot the posterior predictions from model given traces
 
-    #Extract traces
+    #Extract traces - samples that were collected
     trc_mu = pm.trace_to_dataframe(trc)[['Intercept', 'x']]
     trc_sd = pm.trace_to_dataframe(trc)['sd']
 
@@ -76,16 +76,19 @@ def main():
     smfit = sm.OLS(endog=mx_en,exog=mx_ex, hasconst=True).fit()
     print(smfit.summary())
 
+    #Model specifications are wrapped in a with-statement
     with pm.Model() as mdl_ols:
 
         #Use GLM submodule for simplified patsy-like model spec
-        #Use Normal likelihood (with HalfCauchy for error prior)
+        #Use Normal family - normal distribution likelihood, HalfCauchy distribution priors
         pm.glm.GLM.from_formula('y ~ 1 + x', df, family=pm.glm.families.Normal())
 
         #Find MAP(maximum a posterior) using Powell optimization
+        #Mode of the posterior distribution
         start_MAP = pm.find_MAP(fmin=fmin_powell, disp=True)
 
-        #Take samples using NUTS
+        #Take samples using NUTS from the joint probability distribution
+        #Iteratively converges by minimising loss on posterior predictive distribution yhat with respect to true y
         trc_ols = pm.sample(2000, start=start_MAP, step=pm.NUTS())
 
 
